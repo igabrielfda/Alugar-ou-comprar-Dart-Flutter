@@ -30,3 +30,5 @@ Botão: “Comparar”
 Resultado: Card com texto
 Gráfico: fl_chart ou flutter_chart para mostrar a comparação visual
 
+Custo de aluguel = aluguel mensal × 12 × anos
+Custo de compra (financiamento) = simulado como valor do imóvel + 6% ao ano (juros compostos
