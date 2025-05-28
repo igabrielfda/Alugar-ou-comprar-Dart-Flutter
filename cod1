@@ -1,0 +1,246 @@
+import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:intl/intl.dart';
+
+void main() {
+  runApp(AluguelOuComprarApp());
+}
+
+class AluguelOuComprarApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Aluguel ou Comprar?',
+      home: AluguelOuComprarPage(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: Colors.grey[100],
+      ),
+    );
+  }
+}
+
+class AluguelOuComprarPage extends StatefulWidget {
+  @override
+  _AluguelOuComprarPageState createState() => _AluguelOuComprarPageState();
+}
+
+class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
+  final currencyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+
+  double aluguel = 1500;
+  double valorImovel = 300000;
+  int anos = 10;
+  double entrada = 60000;
+  double jurosAno = 8;
+
+  bool comparado = false;
+
+  List<double> acumuladoAluguel = [];
+  List<double> acumuladoCompra = [];
+
+  double custoTotalAluguel = 0;
+  double custoTotalCompra = 0;
+
+  void comparar() {
+    acumuladoAluguel.clear();
+    acumuladoCompra.clear();
+
+    custoTotalAluguel = 0;
+    custoTotalCompra = 0;
+
+    for (int i = 1; i <= anos; i++) {
+      acumuladoAluguel.add(aluguel * 12 * i);
+    }
+    custoTotalAluguel = acumuladoAluguel.last;
+
+    double valorFinanciado = valorImovel - entrada;
+    double jurosMes = jurosAno / 100 / 12;
+    int meses = anos * 12;
+
+    double parcelaMensal = 0;
+    if (valorFinanciado > 0) {
+      parcelaMensal = valorFinanciado *
+          (jurosMes * pow(1 + jurosMes, meses)) /
+          (pow(1 + jurosMes, meses) - 1);
+    }
+
+    for (int i = 1; i <= anos; i++) {
+      acumuladoCompra.add(entrada + parcelaMensal * 12 * i);
+    }
+    custoTotalCompra = acumuladoCompra.last;
+
+    setState(() {
+      comparado = true;
+    });
+  }
+
+  Widget buildYearlyList() {
+    List<Widget> rows = [];
+    rows.add(Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      color: Colors.teal[100],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Expanded(child: Text('Ano', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text('Aluguel', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text('Compra', style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
+      ),
+    ));
+    for (int i = 0; i < anos; i++) {
+      bool melhor = acumuladoAluguel[i] < acumuladoCompra[i];
+      rows.add(Container(
+        padding: EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: i % 2 == 0 ? Colors.white : Colors.grey[50],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(child: Text('${i + 1}')),
+            Expanded(
+                child: Text(currencyFormat.format(acumuladoAluguel[i]),
+                    style: TextStyle(
+                        color: melhor ? Colors.green[700] : Colors.red[700],
+                        fontWeight: melhor ? FontWeight.bold : FontWeight.normal))),
+            Expanded(
+                child: Text(currencyFormat.format(acumuladoCompra[i]),
+                    style: TextStyle(
+                        color: !melhor ? Colors.green[700] : Colors.red[700],
+                        fontWeight: !melhor ? FontWeight.bold : FontWeight.normal))),
+          ],
+        ),
+      ));
+    }
+    return Column(children: rows);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool compraMaisBarata = custoTotalCompra < custoTotalAluguel;
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Aluguel ou Comprar?')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            _buildNumberField(
+                label: 'Valor do Aluguel mensal (R\$)',
+                initialValue: aluguel.toStringAsFixed(2),
+                onChanged: (val) =>
+                    aluguel = double.tryParse(val.replaceAll(',', '.')) ?? aluguel),
+            _buildNumberField(
+                label: 'Valor do Imóvel (R\$)',
+                initialValue: valorImovel.toStringAsFixed(2),
+                onChanged: (val) =>
+                    valorImovel = double.tryParse(val.replaceAll(',', '.')) ?? valorImovel),
+            _buildNumberField(
+                label: 'Entrada (R\$)',
+                initialValue: entrada.toStringAsFixed(2),
+                onChanged: (val) =>
+                    entrada = double.tryParse(val.replaceAll(',', '.')) ?? entrada),
+            _buildNumberField(
+                label: 'Juros anual do financiamento (%)',
+                initialValue: jurosAno.toStringAsFixed(2),
+                onChanged: (val) =>
+                    jurosAno = double.tryParse(val.replaceAll(',', '.')) ?? jurosAno),
+            SizedBox(height: 16),
+            Text('Tempo de moradia: $anos anos',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            Slider(
+              value: anos.toDouble(),
+              min: 1,
+              max: 30,
+              divisions: 29,
+              label: anos.toString(),
+              onChanged: (val) => setState(() => anos = val.toInt()),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(onPressed: comparar, child: Text('Comparar')),
+            if (comparado) ...[
+              SizedBox(height: 24),
+              Card(
+                color: compraMaisBarata ? Colors.green[50] : Colors.orange[50],
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Text(
+                    compraMaisBarata
+                        ? 'Comprar é mais econômico após $anos anos!'
+                        : 'Alugar é mais econômico após $anos anos!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: compraMaisBarata ? Colors.green[800] : Colors.orange[800],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildResultRow('Custo acumulado Aluguel:', currencyFormat.format(custoTotalAluguel), compraMaisBarata == false),
+                      Divider(),
+                      _buildResultRow('Custo acumulado Compra:', currencyFormat.format(custoTotalCompra), compraMaisBarata == true),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+              Text('Detalhamento ano a ano:', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              buildYearlyList(),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField({
+    required String label,
+    required String initialValue,
+    required void Function(String) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        keyboardType: TextInputType.numberWithOptions(decimal: true),
+        controller: TextEditingController(text: initialValue),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String label, String valor, bool destaque) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 16)),
+          Text(valor,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: destaque ? FontWeight.bold : FontWeight.normal,
+                  color: destaque ? Colors.green[700] : Colors.black87)),
+        ],
+      ),
+    );
+  }
+}
