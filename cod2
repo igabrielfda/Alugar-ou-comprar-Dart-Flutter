@@ -1,45 +1,52 @@
-import 'package:flutter/material.dart';
-import 'dart:math';
-import 'package:intl/intl.dart';
+// Importações necessárias
+import 'package:flutter/material.dart'; // Interface do Flutter
+import 'dart:math';                     // Funções matemáticas (ex: potenciação)
+import 'package:intl/intl.dart';        // Para formatação de moedas
 
+// Função principal que inicia o app
 void main() {
   runApp(AluguelOuComprarApp());
 }
 
+// Widget principal do aplicativo
 class AluguelOuComprarApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aluguel ou Comprar?',
-      home: AluguelOuComprarPage(),
-      debugShowCheckedModeBanner: false,
+      title: 'Aluguel ou Comprar?', // Título do app
+      home: AluguelOuComprarPage(), // Tela inicial
+      debugShowCheckedModeBanner: false, // Remove banner de debug
       theme: ThemeData(
-        primarySwatch: Colors.teal,
-        scaffoldBackgroundColor: Colors.grey[100],
+        primarySwatch: Colors.teal, // Cor principal
+        scaffoldBackgroundColor: Colors.grey[100], // Cor de fundo
       ),
     );
   }
 }
 
+// Tela principal com estado (para interatividade)
 class AluguelOuComprarPage extends StatefulWidget {
   @override
   _AluguelOuComprarPageState createState() => _AluguelOuComprarPageState();
 }
 
 class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
-  final currencyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+  final currencyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$'); // Formatação monetária brasileira
 
+  // Valores iniciais dos campos
   double aluguel = 1500;
   double valorImovel = 300000;
   int anos = 10;
   double entrada = 60000;
   double jurosAno = 8;
 
+  // Controladores para os campos de texto
   late TextEditingController aluguelController;
   late TextEditingController imovelController;
   late TextEditingController entradaController;
   late TextEditingController jurosController;
 
+  // Variáveis para armazenar os resultados
   bool comparado = false;
   List<double> acumuladoAluguel = [];
   List<double> acumuladoCompra = [];
@@ -49,53 +56,64 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
   @override
   void initState() {
     super.initState();
+    // Inicializa os controladores com os valores padrão
     aluguelController = TextEditingController(text: aluguel.toStringAsFixed(2));
     imovelController = TextEditingController(text: valorImovel.toStringAsFixed(2));
     entradaController = TextEditingController(text: entrada.toStringAsFixed(2));
     jurosController = TextEditingController(text: jurosAno.toStringAsFixed(2));
   }
 
+  // Função que compara os custos de alugar ou comprar
   void comparar() {
     if (entrada >= valorImovel) {
+      // Validação: entrada não pode ser maior ou igual ao valor do imóvel
       _showErrorDialog("A entrada não pode ser maior ou igual ao valor do imóvel.");
       return;
     }
 
+    // Limpa listas e reinicia os acumulados
     acumuladoAluguel.clear();
     acumuladoCompra.clear();
     custoTotalAluguel = 0;
     custoTotalCompra = 0;
 
+    // Calcula o custo acumulado do aluguel por ano
     for (int i = 1; i <= anos; i++) {
       acumuladoAluguel.add(aluguel * 12 * i);
     }
     custoTotalAluguel = acumuladoAluguel.last;
 
+    // Cálculo do valor financiado (valor do imóvel - entrada)
     double valorFinanciado = valorImovel - entrada;
-    double jurosMes = jurosAno / 100 / 12;
+    double jurosMes = jurosAno / 100 / 12; // Juros mensais
     int meses = anos * 12;
 
     double parcelaMensal = 0;
     if (valorFinanciado > 0) {
       if (jurosAno == 0) {
+        // Sem juros
         parcelaMensal = valorFinanciado / meses;
       } else {
+        // Fórmula de financiamento (sistema de amortização francês)
         parcelaMensal = valorFinanciado *
             (jurosMes * pow(1 + jurosMes, meses)) /
             (pow(1 + jurosMes, meses) - 1);
       }
     }
 
+    // Acumula os custos da compra ano a ano
     for (int i = 1; i <= anos; i++) {
       acumuladoCompra.add(entrada + parcelaMensal * 12 * i);
     }
     custoTotalCompra = acumuladoCompra.last;
 
+    // Atualiza o estado para mostrar os resultados
     setState(() {
       comparado = true;
     });
   }
 
+  // Exibe uma mensagem de erro
   void _showErrorDialog(String mensagem) {
     showDialog(
       context: context,
@@ -122,6 +140,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
+            // Campos de entrada
             _buildNumberField(
               label: 'Valor do Aluguel mensal (R\$)',
               controller: aluguelController,
@@ -154,9 +173,10 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
                 comparado = false;
               }),
             ),
+
+            // Slider para escolher os anos de moradia
             SizedBox(height: 16),
-            Text('Tempo de moradia: $anos anos',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+            Text('Tempo de moradia: $anos anos', style: TextStyle(fontWeight: FontWeight.w600)),
             Slider(
               value: anos.toDouble(),
               min: 1,
@@ -169,9 +189,14 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
               }),
             ),
             SizedBox(height: 10),
+
+            // Botão para comparar os custos
             ElevatedButton(onPressed: comparar, child: Text('Comparar')),
+
+            // Mostra os resultados após a comparação
             if (comparado) ...[
               SizedBox(height: 24),
+              // Mensagem de recomendação
               Card(
                 color: compraMaisBarata ? Colors.green[50] : Colors.orange[50],
                 elevation: 4,
@@ -191,6 +216,8 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
                 ),
               ),
               SizedBox(height: 16),
+
+              // Custos acumulados comparativos
               Card(
                 elevation: 2,
                 child: Padding(
@@ -205,6 +232,8 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
                 ),
               ),
               SizedBox(height: 24),
+
+              // Lista ano a ano com detalhamento dos custos
               Text('Detalhamento ano a ano:', style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               buildYearlyList(),
@@ -215,6 +244,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
     );
   }
 
+  // Campo de entrada numérica personalizado
   Widget _buildNumberField({
     required String label,
     required TextEditingController controller,
@@ -236,6 +266,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
     );
   }
 
+  // Linha de resultado (custo do aluguel ou compra)
   Widget _buildResultRow(String label, String valor, bool destaque) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -253,6 +284,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
     );
   }
 
+  // Gera a tabela de comparação ano a ano
   Widget buildYearlyList() {
     if (acumuladoAluguel.length < anos || acumuladoCompra.length < anos) {
       return Text(
@@ -262,6 +294,8 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
     }
 
     List<Widget> rows = [];
+
+    // Cabeçalho da tabela
     rows.add(Container(
       padding: EdgeInsets.symmetric(vertical: 8),
       color: Colors.teal[100],
@@ -275,6 +309,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
       ),
     ));
 
+    // Linhas com os dados acumulados
     for (int i = 0; i < anos; i++) {
       bool melhor = acumuladoAluguel[i] < acumuladoCompra[i];
       rows.add(Container(
@@ -285,7 +320,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Expanded(child: Text('${i + 1}')),
+            Expanded(child: Text('${i + 1}')), // Ano
             Expanded(
                 child: Text(currencyFormat.format(acumuladoAluguel[i]),
                     style: TextStyle(
@@ -300,6 +335,7 @@ class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
         ),
       ));
     }
+
     return Column(children: rows);
   }
 }
