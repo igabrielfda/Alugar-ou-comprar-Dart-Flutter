@@ -1,0 +1,305 @@
+import 'package:flutter/material.dart';
+import 'dart:math';
+import 'package:intl/intl.dart';
+
+void main() {
+  runApp(AluguelOuComprarApp());
+}
+
+class AluguelOuComprarApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Aluguel ou Comprar?',
+      home: AluguelOuComprarPage(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        scaffoldBackgroundColor: Colors.grey[100],
+      ),
+    );
+  }
+}
+
+class AluguelOuComprarPage extends StatefulWidget {
+  @override
+  _AluguelOuComprarPageState createState() => _AluguelOuComprarPageState();
+}
+
+class _AluguelOuComprarPageState extends State<AluguelOuComprarPage> {
+  final currencyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+
+  double aluguel = 1500;
+  double valorImovel = 300000;
+  int anos = 10;
+  double entrada = 60000;
+  double jurosAno = 8;
+
+  late TextEditingController aluguelController;
+  late TextEditingController imovelController;
+  late TextEditingController entradaController;
+  late TextEditingController jurosController;
+
+  bool comparado = false;
+  List<double> acumuladoAluguel = [];
+  List<double> acumuladoCompra = [];
+  double custoTotalAluguel = 0;
+  double custoTotalCompra = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    aluguelController = TextEditingController(text: aluguel.toStringAsFixed(2));
+    imovelController = TextEditingController(text: valorImovel.toStringAsFixed(2));
+    entradaController = TextEditingController(text: entrada.toStringAsFixed(2));
+    jurosController = TextEditingController(text: jurosAno.toStringAsFixed(2));
+  }
+
+  void comparar() {
+    if (entrada >= valorImovel) {
+      _showErrorDialog("A entrada não pode ser maior ou igual ao valor do imóvel.");
+      return;
+    }
+
+    acumuladoAluguel.clear();
+    acumuladoCompra.clear();
+    custoTotalAluguel = 0;
+    custoTotalCompra = 0;
+
+    for (int i = 1; i <= anos; i++) {
+      acumuladoAluguel.add(aluguel * 12 * i);
+    }
+    custoTotalAluguel = acumuladoAluguel.last;
+
+    double valorFinanciado = valorImovel - entrada;
+    double jurosMes = jurosAno / 100 / 12;
+    int meses = anos * 12;
+
+    double parcelaMensal = 0;
+    if (valorFinanciado > 0) {
+      if (jurosAno == 0) {
+        parcelaMensal = valorFinanciado / meses;
+      } else {
+        parcelaMensal = valorFinanciado *
+            (jurosMes * pow(1 + jurosMes, meses)) /
+            (pow(1 + jurosMes, meses) - 1);
+      }
+    }
+
+    for (int i = 1; i <= anos; i++) {
+      acumuladoCompra.add(entrada + parcelaMensal * 12 * i);
+    }
+    custoTotalCompra = acumuladoCompra.last;
+
+    setState(() {
+      comparado = true;
+    });
+  }
+
+  void _showErrorDialog(String mensagem) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Erro'),
+        content: Text(mensagem),
+        actions: [
+          TextButton(
+            child: Text('Fechar'),
+            onPressed: () => Navigator.pop(context),
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    bool compraMaisBarata = custoTotalCompra < custoTotalAluguel;
+
+    return Scaffold(
+      appBar: AppBar(title: Text('Aluguel ou Comprar?')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            _buildNumberField(
+              label: 'Valor do Aluguel mensal (R\$)',
+              controller: aluguelController,
+              onChanged: (val) => setState(() {
+                aluguel = double.tryParse(val.replaceAll(',', '.')) ?? aluguel;
+                comparado = false;
+              }),
+            ),
+            _buildNumberField(
+              label: 'Valor do Imóvel (R\$)',
+              controller: imovelController,
+              onChanged: (val) => setState(() {
+                valorImovel = double.tryParse(val.replaceAll(',', '.')) ?? valorImovel;
+                comparado = false;
+              }),
+            ),
+            _buildNumberField(
+              label: 'Entrada (R\$)',
+              controller: entradaController,
+              onChanged: (val) => setState(() {
+                entrada = double.tryParse(val.replaceAll(',', '.')) ?? entrada;
+                comparado = false;
+              }),
+            ),
+            _buildNumberField(
+              label: 'Juros anual do financiamento (%)',
+              controller: jurosController,
+              onChanged: (val) => setState(() {
+                jurosAno = double.tryParse(val.replaceAll(',', '.')) ?? jurosAno;
+                comparado = false;
+              }),
+            ),
+            SizedBox(height: 16),
+            Text('Tempo de moradia: $anos anos',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+            Slider(
+              value: anos.toDouble(),
+              min: 1,
+              max: 30,
+              divisions: 29,
+              label: anos.toString(),
+              onChanged: (val) => setState(() {
+                anos = val.toInt();
+                comparado = false;
+              }),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(onPressed: comparar, child: Text('Comparar')),
+            if (comparado) ...[
+              SizedBox(height: 24),
+              Card(
+                color: compraMaisBarata ? Colors.green[50] : Colors.orange[50],
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Text(
+                    compraMaisBarata
+                        ? 'Comprar é mais econômico após $anos anos!'
+                        : 'Alugar é mais econômico após $anos anos!',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: compraMaisBarata ? Colors.green[800] : Colors.orange[800],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildResultRow('Custo acumulado Aluguel:', currencyFormat.format(custoTotalAluguel), compraMaisBarata == false),
+                      Divider(),
+                      _buildResultRow('Custo acumulado Compra:', currencyFormat.format(custoTotalCompra), compraMaisBarata == true),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+              Text('Detalhamento ano a ano:', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              buildYearlyList(),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField({
+    required String label,
+    required TextEditingController controller,
+    required void Function(String) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        keyboardType: TextInputType.numberWithOptions(decimal: true),
+        controller: controller,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String label, String valor, bool destaque) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 16)),
+          Text(valor,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: destaque ? FontWeight.bold : FontWeight.normal,
+                  color: destaque ? Colors.green[700] : Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  Widget buildYearlyList() {
+    if (acumuladoAluguel.length < anos || acumuladoCompra.length < anos) {
+      return Text(
+        'Erro: dados incompletos. Clique em "Comparar" novamente.',
+        style: TextStyle(color: Colors.red),
+      );
+    }
+
+    List<Widget> rows = [];
+    rows.add(Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      color: Colors.teal[100],
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Expanded(child: Text('Ano', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text('Aluguel', style: TextStyle(fontWeight: FontWeight.bold))),
+          Expanded(child: Text('Compra', style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
+      ),
+    ));
+
+    for (int i = 0; i < anos; i++) {
+      bool melhor = acumuladoAluguel[i] < acumuladoCompra[i];
+      rows.add(Container(
+        padding: EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: i % 2 == 0 ? Colors.white : Colors.grey[50],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(child: Text('${i + 1}')),
+            Expanded(
+                child: Text(currencyFormat.format(acumuladoAluguel[i]),
+                    style: TextStyle(
+                        color: melhor ? Colors.green[700] : Colors.red[700],
+                        fontWeight: melhor ? FontWeight.bold : FontWeight.normal))),
+            Expanded(
+                child: Text(currencyFormat.format(acumuladoCompra[i]),
+                    style: TextStyle(
+                        color: !melhor ? Colors.green[700] : Colors.red[700],
+                        fontWeight: !melhor ? FontWeight.bold : FontWeight.normal))),
+          ],
+        ),
+      ));
+    }
+    return Column(children: rows);
+  }
+}
